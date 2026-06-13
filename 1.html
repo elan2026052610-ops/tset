@@ -1,11 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vue 3 TodoList</title>
+    <style>
+        *{box-sizing:border-box}
+        body{font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f5f7fb; margin:0; padding:24px; display:flex; justify-content:center}
+        .container{width:100%;max-width:520px;background:#fff;border-radius:8px;padding:20px;box-shadow:0 6px 18px rgba(36,37,38,0.08)}
+        h1{margin:0 0 12px;font-size:20px;color:#333}
+        .input-row{display:flex;gap:8px}
+        input.new-todo{flex:1;padding:10px 12px;border:1px solid #e6e9ef;border-radius:6px;font-size:14px}
+        button.add{padding:10px 12px;border:none;background:#3b82f6;color:#fff;border-radius:6px;cursor:pointer}
+        ul.todo-list{list-style:none;padding:0;margin:16px 0}
+        li.todo-item{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #f0f2f6}
+        .todo-item:last-child{border-bottom:0}
+        .todo-item label{display:flex;align-items:center;gap:8px;flex:1}
+        .todo-text{font-size:15px;color:#222}
+        .done{color:#9aa4b2;text-decoration:line-through}
+        .actions button{background:transparent;border:0;color:#e11d48;cursor:pointer}
+        .footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+        .filters button{margin-right:8px;padding:6px 8px;border-radius:6px;border:1px solid transparent;background:transparent;cursor:pointer}
+        .filters button.active{background:#eef2ff;border-color:#c7d2fe}
+        .meta{color:#6b7280;font-size:13px}
+        @media (max-width:520px){.container{padding:14px}}
+    </style>
 </head>
 <body>
-    3333
+    <div id="app" class="container">
+        <h1>TodoList（Vue 3）</h1>
+        <div class="input-row">
+            <input
+                class="new-todo"
+                placeholder="添加新任务，按回车或点击添加"
+                v-model="newTodo"
+                @keyup.enter="addTodo"
+            />
+            <button class="add" @click="addTodo">添加</button>
+        </div>
+
+        <ul class="todo-list">
+            <li class="todo-item" v-for="todo in filteredTodos" :key="todo.id">
+                <label>
+                    <input type="checkbox" v-model="todo.done" @change="save()" />
+                    <span :class="['todo-text', todo.done ? 'done' : '']">{{ todo.text }}</span>
+                </label>
+                <div class="actions">
+                    <button @click="removeTodo(todo.id)">删除</button>
+                </div>
+            </li>
+        </ul>
+
+        <div class="footer">
+            <div class="filters">
+                <button :class="{active:filter==='all'}" @click="filter='all'">全部</button>
+                <button :class="{active:filter==='active'}" @click="filter='active'">未完成</button>
+                <button :class="{active:filter==='completed'}" @click="filter='completed'">已完成</button>
+            </div>
+            <div class="meta">剩余：{{ remaining }} / 总计：{{ todos.length }}</div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+            <button @click="clearCompleted()">清除已完成</button>
+            <button @click="toggleAll()">切换全部完成</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        createApp({
+            setup() {
+                const STORAGE_KEY = 'vue3-todos';
+                const newTodo = ref('');
+                const todos = ref(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+                const filter = ref('all');
+
+                function save() {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos.value));
+                }
+
+                function addTodo() {
+                    const text = newTodo.value && newTodo.value.trim();
+                    if (!text) return;
+                    todos.value.push({ id: Date.now(), text, done: false });
+                    newTodo.value = '';
+                    save();
+                }
+
+                function removeTodo(id) {
+                    const idx = todos.value.findIndex(t => t.id === id);
+                    if (idx > -1) todos.value.splice(idx, 1);
+                    save();
+                }
+
+                function clearCompleted() {
+                    todos.value = todos.value.filter(t => !t.done);
+                    save();
+                }
+
+                function toggleAll() {
+                    const allDone = todos.value.every(t => t.done);
+                    todos.value.forEach(t => (t.done = !allDone));
+                    save();
+                }
+
+                const filteredTodos = computed(() => {
+                    if (filter.value === 'active') return todos.value.filter(t => !t.done);
+                    if (filter.value === 'completed') return todos.value.filter(t => t.done);
+                    return todos.value;
+                });
+
+                const remaining = computed(() => todos.value.filter(t => !t.done).length);
+
+                watch(todos, save, { deep: true });
+
+                return { newTodo, todos, addTodo, removeTodo, filteredTodos, filter, remaining, clearCompleted, toggleAll, save };
+            }
+        }).mount('#app');
+    </script>
 </body>
 </html>
